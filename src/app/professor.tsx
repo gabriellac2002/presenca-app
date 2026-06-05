@@ -5,20 +5,20 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
-  useColorScheme,
 } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Colors, Spacing } from '@/constants/theme';
-import { createSession, SESSION_DURATION_SECONDS } from '@/lib/sessions';
+import { Spacing, Radius, FontSize, FontWeight } from '@/theme';
+import { useTheme } from '@/hooks/use-theme';
+import { createSession, stopSession, SESSION_DURATION_SECONDS } from '@/services/sessions';
 
 export default function ProfessorScreen() {
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
+  const colors = useTheme();
 
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [stopping, setStopping] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [expired, setExpired] = useState(false);
@@ -42,6 +42,22 @@ export default function ProfessorScreen() {
     return () => clearInterval(interval);
   }, [sessionId]);
 
+  const handleStopSession = useCallback(async () => {
+    if (!sessionId) return;
+    setStopping(true);
+    setError(null);
+    try {
+      await stopSession(sessionId);
+      setSessionId(null);
+      setExpired(false);
+      setSecondsLeft(0);
+    } catch {
+      setError('Erro ao encerrar sessão. Tente novamente.');
+    } finally {
+      setStopping(false);
+    }
+  }, [sessionId]);
+
   const handleGenerateQR = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -57,9 +73,10 @@ export default function ProfessorScreen() {
   }, []);
 
   const formatTime = (seconds: number) => {
-    const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+    const h = Math.floor(seconds / 3600).toString().padStart(2, '0');
+    const m = Math.floor((seconds % 3600) / 60).toString().padStart(2, '0');
     const s = (seconds % 60).toString().padStart(2, '0');
-    return `${m}:${s}`;
+    return `${h}:${m}:${s}`;
   };
 
   const today = new Date().toLocaleDateString('pt-BR', {
@@ -71,33 +88,39 @@ export default function ProfessorScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <Text style={[styles.title, { color: colors.text }]}>Gerar Presença</Text>
-      <Text style={[styles.date, { color: colors.textSecondary }]}>{today}</Text>
+      <View style={[styles.header, { backgroundColor: colors.primary }]}>
+        <Text style={styles.headerTitle}>Gerar Presença</Text>
+        <Text style={styles.headerDate}>{today}</Text>
+      </View>
 
       <View style={styles.qrArea}>
         {sessionId ? (
           <>
-            <View style={[styles.qrWrapper, { backgroundColor: colors.backgroundElement }]}>
+            <View style={[styles.qrCard, { backgroundColor: colors.surface, shadowColor: colors.text }]}>
               <View style={expired ? styles.qrExpired : undefined}>
                 <QRCode
                   value={sessionId}
                   size={220}
                   color={colors.text}
-                  backgroundColor={colors.backgroundElement}
+                  backgroundColor={colors.surface}
                 />
               </View>
             </View>
 
             {expired ? (
-              <Text style={styles.expiredText}>QR Code expirado</Text>
+              <View style={[styles.badge, { backgroundColor: colors.errorLight }]}>
+                <Text style={[styles.badgeText, { color: colors.error }]}>QR Code expirado</Text>
+              </View>
             ) : (
-              <Text style={[styles.countdown, { color: colors.textSecondary }]}>
-                Expira em {formatTime(secondsLeft)}
-              </Text>
+              <View style={[styles.badge, { backgroundColor: colors.successLight }]}>
+                <Text style={[styles.badgeText, { color: colors.success }]}>
+                  Expira em {formatTime(secondsLeft)}
+                </Text>
+              </View>
             )}
           </>
         ) : (
-          <View style={[styles.qrPlaceholder, { backgroundColor: colors.backgroundElement }]}>
+          <View style={[styles.qrPlaceholder, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Text style={[styles.placeholderText, { color: colors.textSecondary }]}>
               Gere um QR Code para os alunos registrarem presença
             </Text>
@@ -105,21 +128,41 @@ export default function ProfessorScreen() {
         )}
       </View>
 
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      {error ? (
+        <View style={[styles.errorBanner, { backgroundColor: colors.errorLight }]}>
+          <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
+        </View>
+      ) : null}
 
-      <TouchableOpacity
-        style={[styles.button, loading && styles.buttonDisabled]}
-        onPress={handleGenerateQR}
-        disabled={loading}
-        activeOpacity={0.8}>
-        {loading ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.buttonText}>
-            {sessionId ? 'Gerar Novo QR Code' : 'Gerar QR Code'}
-          </Text>
+      <View style={styles.footer}>
+        {sessionId && !expired && (
+          <TouchableOpacity
+            style={[styles.buttonOutline, { borderColor: colors.error }, stopping && styles.buttonDisabled]}
+            onPress={handleStopSession}
+            disabled={stopping || loading}
+            activeOpacity={0.8}>
+            {stopping ? (
+              <ActivityIndicator color={colors.error} />
+            ) : (
+              <Text style={[styles.buttonOutlineText, { color: colors.error }]}>Encerrar QR Code</Text>
+            )}
+          </TouchableOpacity>
         )}
-      </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.button, { backgroundColor: colors.primary }, loading && styles.buttonDisabled]}
+          onPress={handleGenerateQR}
+          disabled={loading || stopping}
+          activeOpacity={0.8}>
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.buttonText}>
+              {sessionId ? 'Gerar Novo QR Code' : 'Gerar QR Code'}
+            </Text>
+          )}
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 }
@@ -127,77 +170,100 @@ export default function ProfessorScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: 'center',
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.two,
-    gap: Spacing.one,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    marginTop: Spacing.two,
+  header: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.lg,
+    gap: Spacing.xs,
   },
-  date: {
-    fontSize: 14,
-    marginBottom: Spacing.three,
+  headerTitle: {
+    fontSize: FontSize.xxl,
+    fontWeight: FontWeight.bold,
+    color: '#FFFFFF',
+  },
+  headerDate: {
+    fontSize: FontSize.sm,
+    color: 'rgba(255,255,255,0.85)',
     textTransform: 'capitalize',
   },
   qrArea: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    gap: Spacing.three,
+    gap: Spacing.md,
+    paddingHorizontal: Spacing.lg,
   },
-  qrWrapper: {
-    padding: Spacing.four,
-    borderRadius: Spacing.three,
+  qrCard: {
+    padding: Spacing.lg,
+    borderRadius: Radius.lg,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   qrExpired: {
-    opacity: 0.3,
+    opacity: 0.25,
   },
   qrPlaceholder: {
-    width: 260,
-    height: 260,
-    borderRadius: Spacing.three,
+    width: 268,
+    height: 268,
+    borderRadius: Radius.lg,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: Spacing.four,
+    padding: Spacing.lg,
+    borderWidth: 2,
+    borderStyle: 'dashed',
   },
   placeholderText: {
     textAlign: 'center',
-    fontSize: 15,
+    fontSize: FontSize.md,
     lineHeight: 22,
   },
-  countdown: {
-    fontSize: 18,
-    fontWeight: '500',
+  badge: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    borderRadius: Radius.full,
   },
-  expiredText: {
-    fontSize: 16,
-    color: '#E53E3E',
-    fontWeight: '600',
+  badgeText: {
+    fontSize: FontSize.md,
+    fontWeight: FontWeight.semibold,
+  },
+  errorBanner: {
+    marginHorizontal: Spacing.lg,
+    marginBottom: Spacing.sm,
+    padding: Spacing.md,
+    borderRadius: Radius.md,
   },
   errorText: {
-    color: '#E53E3E',
+    fontSize: FontSize.sm,
     textAlign: 'center',
-    fontSize: 14,
-    marginHorizontal: Spacing.three,
+  },
+  footer: {
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.xl,
   },
   button: {
-    backgroundColor: '#208AEF',
-    paddingVertical: Spacing.three,
-    paddingHorizontal: Spacing.five,
-    borderRadius: Spacing.three,
+    paddingVertical: Spacing.md,
+    borderRadius: Radius.md,
     alignItems: 'center',
-    minWidth: 220,
-    marginBottom: Spacing.four,
+  },
+  buttonOutline: {
+    paddingVertical: Spacing.md,
+    borderRadius: Radius.md,
+    alignItems: 'center',
+    borderWidth: 1.5,
+  },
+  buttonOutlineText: {
+    fontSize: FontSize.md,
+    fontWeight: FontWeight.semibold,
   },
   buttonDisabled: {
     opacity: 0.6,
   },
   buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+    color: '#FFFFFF',
+    fontSize: FontSize.md,
+    fontWeight: FontWeight.semibold,
   },
 });
