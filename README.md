@@ -1,56 +1,78 @@
-# Welcome to your Expo app 👋
+# Presença App
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+App mobile de registro de presença escolar via QR Code, desenvolvido com React Native e Expo. O professor gera um QR Code para a aula e os alunos escaneiam para registrar presença — tudo salvo em tempo real no Firebase.
 
-## Get started
+## Funcionalidades
 
-1. Install dependencies
+**Professor**
+- Gera QR Code para uma aula com validade de 2 horas
+- Encerra a sessão a qualquer momento
+- Visualiza relatório de presença por aula
 
-   ```bash
-   npm install
-   ```
+**Aluno**
+- Cadastro com nome e matrícula
+- Escaneia o QR Code para registrar presença
+- Não é possível registrar duas vezes na mesma sessão
 
-2. Start the app
+## Tecnologias
 
-   ```bash
-   npx expo start
-   ```
+- [Expo](https://expo.dev) + [Expo Router](https://docs.expo.dev/router/introduction/) (file-based routing)
+- [React Native](https://reactnative.dev/)
+- [Firebase Firestore](https://firebase.google.com/docs/firestore) (banco de dados em tempo real)
+- TypeScript
 
-In the output, you'll find options to open the app in a
+## Configuração
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+### 1. Instale as dependências
 
 ```bash
-npm run reset-project
+npm install
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+### 2. Configure as variáveis de ambiente
 
-### Other setup steps
+Copie o arquivo de exemplo e preencha com as suas chaves do Firebase:
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+```bash
+cp .env.example .env
+```
 
-## Learn more
+As chaves estão disponíveis no [Firebase Console](https://console.firebase.google.com) em **Configurações do projeto → Seus aplicativos**.
 
-To learn more about developing your project with Expo, look at the following resources:
+### 3. Rode o app
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+```bash
+npx expo start
+```
 
-## Join the community
+Escolha a plataforma no terminal:
 
-Join our community of developers creating universal apps.
+| Tecla | Plataforma |
+|-------|-----------|
+| `a` | Android (emulador ou dispositivo) |
+| `i` | iOS (simulador — somente macOS) |
+| `w` | Navegador web |
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## Estrutura do projeto
+
+```
+src/
+├── app/            # Telas (Expo Router)
+│   ├── professor.tsx
+│   └── explore.tsx
+├── config/
+│   └── firebase.ts # Inicialização do Firebase (lê do .env)
+├── services/
+│   └── sessions.ts # Lógica de criação e encerramento de sessões
+├── theme/          # Cores, espaçamento e tipografia
+│   ├── colors.ts
+│   ├── spacing.ts
+│   └── typography.ts
+├── components/     # Componentes reutilizáveis
+└── hooks/
+    └── use-theme.ts
+```
+
+## Requisitos detalhados
+
+Consulte [REQUIREMENTS.md](./REQUIREMENTS.md) para a especificação completa das funcionalidades.
