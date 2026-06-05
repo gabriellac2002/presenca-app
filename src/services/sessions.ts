@@ -1,7 +1,7 @@
-import { collection, addDoc, Timestamp } from 'firebase/firestore';
-import { db } from '@/firebaseConfig';
+import { collection, addDoc, doc, updateDoc, Timestamp } from 'firebase/firestore';
+import { db } from '@/config/firebase';
 
-export const SESSION_DURATION_SECONDS = 5 * 60;
+export const SESSION_DURATION_SECONDS = 2 * 60 * 60; // 2 hours
 
 export async function createSession(teacherId = 'professor-demo'): Promise<string> {
   const now = new Date();
@@ -16,4 +16,8 @@ export async function createSession(teacherId = 'professor-demo'): Promise<strin
   });
 
   return docRef.id;
+}
+
+export async function stopSession(sessionId: string): Promise<void> {
+  await updateDoc(doc(db, 'sessions', sessionId), { active: false });
 }
